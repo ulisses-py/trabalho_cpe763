@@ -1,0 +1,573 @@
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import PySimpleGUI as sg
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import sympy as sp
+
+
+
+#import PySimpleGUI as sg
+#from sympy import *
+#import numpy as np
+from random import randint
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
+from matplotlib.figure import Figure
+from matplotlib.ticker import ScalarFormatter
+from matplotlib import ticker
+import matplotlib.pyplot as plt
+import math
+from time import perf_counter
+matplotlib.use('TkAgg')
+
+
+
+
+
+#sg.theme('LightGrey2')
+
+
+#Alex
+class Toolbar(NavigationToolbar2Tk):
+    # only display the buttons we need
+    toolitems = [t for t in NavigationToolbar2Tk.toolitems if
+                t[0] in ('Home', 'Pan', 'Zoom')]
+                # t[0] in ('Home', 'Pan', 'Zoom','Save')]
+    #toolitems = [t for t in NavigationToolbar2Tk.toolitems]
+                # t[0] in ('Home', 'Pan', 'Zoom','Save')]
+    def __init__(self, *args, **kwargs):
+        super(Toolbar, self).__init__(*args, **kwargs)
+
+
+
+a = 'freq_8_barras.txt'
+
+
+def leitura_dados(a):
+    #my_file = 'freq_8_barras.txt'
+    #a = str
+    my_file = a
+    #my_file = 'my_data.txt'
+    my_data = []
+    with open(my_file, 'r', encoding='latin-1') as reader:
+        line = reader.readline()
+        mat = []
+        while line != '':
+            vec = []
+            while True:
+                pos = line.find('\t')
+                x = line[0: pos]
+                vec.append(x)
+                #vec.append(float(x))
+                line = line[int(pos) + 1:]
+                if pos == -1:
+                    break
+            mat.append(vec)
+            line = reader.readline()
+        num_colunas = len(vec)
+    my_str = np.array(mat[6])
+    subestacoes = np.delete(my_str,0,0)
+    mat = np.array(mat[8:len(mat)])# convert list to a numpy array
+    my_data = mat.astype(float)# convert string to float
+    my_data = np.array(my_data)
+    num_pmu = len(subestacoes)
+    return my_data, num_colunas, num_pmu, subestacoes
+
+
+a, b, c, sub = leitura_dados(a)
+#num_row = len(a)
+#num_col = len(a[0])
+
+#print(a[25,0])
+
+#print(num_row,num_col,b,c,len(sub))
+
+#print(a[1])
+
+#print(sub)
+
+#plt.plot(a[:,0],a[:,1])
+
+
+# Funcao para obter as curvas de variações de frequencia
+def curvas_var_freq(dados, num_colunas):
+    passo_simulacao = 0.01
+    delta_t = 1
+    range_t = int(delta_t/passo_simulacao) 
+    matriz = []
+    a = dados
+    b = num_colunas
+    for i in np.arange(1,b):
+        variacao_f = []#numero de colunas resultante:
+        for k in np.arange(len(a)-2*range_t):
+            delta_f = (a[k+range_t,i]-a[k,i])/(a[k+range_t,0]-a[k,0])
+            a[k,i] = float(delta_f)
+            variacao_f.append(delta_f)        
+        matriz.append(variacao_f)
+    matriz = np.array(matriz)
+    matriz_var_freq_sem_tempo = np.transpose(matriz)
+    a = a[:len(a)-2*range_t]
+    matriz_var_freq_tempo = a
+    return matriz_var_freq_sem_tempo, matriz_var_freq_tempo
+
+#"""
+matriz, a = curvas_var_freq(a, b)
+#print(len(a[0]))
+#print(len(a))
+
+#print(a)
+
+#for k in range(1,len(a[0])):
+#    plt.plot(a[:,0],a[:,k])
+#plt.grid()
+#plt.show()
+
+
+#print(len(matriz[0]))
+#print(len(matriz))
+
+#"""
+
+
+# Funcao para definir o instante do registro do evento pelas subestacoes
+def instante_registro(matriz,a,sub):
+    indice_evento = 0.02
+    v = []
+    for i in range(0,len(matriz[0,:])):
+        #a=[]
+        for k in range(0,len(matriz[:,0])):
+            #vec = []
+            if abs(matriz[k][i])>indice_evento:
+                vec = [a[k,0],int(i),sub[i]]
+                v.append(vec)#x = vec
+                break
+            #a.append(vec)
+        #v.append(a)
+    #print('dimensao vetor ordenado:\n',v)
+    #print('linha:\n',v[0,:])
+    v = np.array(v)
+    return v
+
+
+
+v = instante_registro(matriz,a,sub)
+#print(len(v),len(v[0]))
+#print('Vetor de registro:\n',v)
+
+
+
+# Funcao para ordenar as barras conforme registro temporal do evento
+def ordena(v):
+    a = v
+    for i in range(0,len(a)):
+            for j in range(i+1, len(a)):    
+                temp = []
+                if (a[i,0] > a[j,0]):    
+                    temp = np.array(a[i,:])    
+                    a[i,:] = a[j,:]    
+                    a[j,:] = temp
+    a = np.array(a)
+    return a
+
+v = ordena(v)
+v = v[:,0]
+v = np.reshape(v,(len(v),1))
+#v2 = np.reshape(v2,(len(v),1))
+print(v)
+
+a = [1,1,1,1,1,1,1]
+b = [1,2,2,2,3,3,3]
+
+
+def agrupar(a,b,v):
+    a = np.array([1,1,1,1,1,1,1,1])
+    a = np.reshape(a,(len(v),1))
+    b = np.array([1,1,1,1,1,1,1,1])
+    b = np.reshape(b,(8,1))   
+    matriz = np.array([a,b,v])#.reshape(len(v),len(v))
+    return matriz,a,b
+
+
+
+#matriz,a,b = agrupar(a,b,v)
+#print(matriz)
+
+
+
+
+"""
+
+a = ordena(v)
+print('O vetor ordenado:\n',a[])
+
+"""
+
+"""
+vetor_ordenado = ordena(instante_registro())
+
+print('Vetor ordenado:\n',vetor_ordenado)
+"""
+
+
+
+
+
+
+# Funcao para listar os eventos em ordem cronológica
+
+
+
+"""
+
+# Funcao para calculo da jacobiana
+# N é numero de PMU que virá da funçao leitura_dados()
+
+def Jacobiana(N,xi,yi,ti):
+    G = []
+    for i in range(1,N):
+        x,y = sp.symbols('x y')
+        f = (xi[i,0] - xe)**2 + (yi[i,0] - ye)**2 - (ti[i,0]+te)*ve**2
+        
+        g1 = sp.diff(f,xe)
+        g1 = sp.lambdify(xe,g1)
+        
+        g2 = sp.diff(f,ye)
+        g2 = sp.lambdify(ye,g2) 
+        
+        g3 = sp.diff(f,te)
+        g3 = sp.lambdify(te,g3)
+        
+        g4 = sp.diff(f,ve)
+        g4 = sp.lambdify(ve,g4)
+        
+        G.append([g1,g2,g3,g4])
+    return G
+
+
+#"""
+"""
+
+J = Jacobiana(N,xi,yi,ti,xe,ye,te,ve)
+
+
+def pseudo_jacob(J):
+    pJ = np.linalg.inv(J.transpose(),J)*(J.transpose())
+    return pJ
+
+
+
+def a_cos(ang):
+    a1 = mt.acos(abs(mt.cos(ang[0])))
+    a2 = mt.acos(abs(mt.cos(ang[1])))
+    a3 = mt.acos(abs(mt.cos(ang[2])))
+    a4 = mt.acos(abs(mt.cos(ang[3])))
+    ang_r = np.array([[a1], [a2], [a3], [a4]])
+    return ang_r
+
+
+
+def newton():
+    # passo 1: assume any random initial guess for switching
+    # angles alpha between 0 and pi/2
+    ###########################################################
+
+
+    # Índice de Modulação
+    ###########################################################
+    m_i = 1
+
+    # Ângulos iniciais
+    ###########################################################
+    a1 = mt.pi*10/180
+    a2 = mt.pi*15/180
+    a3 = mt.pi*20/180
+    a4 = mt.pi*25/180
+    ang = np.array([[a1],[a2],[a3],[a4]])
+    print('angulos\n',ang)
+
+
+    # passo 2: set m_i=0
+    ###########################################################
+
+
+    ang_k = ang
+    ang_k1 = ang
+    ang_k2 = np.array([0,0,0,0])
+    x = 0
+
+    F=F_alfa(ang,m_i)
+
+    a, b, c, d = F # critério de parada loop
+
+    tolerancia = 0.0001
+
+
+    while abs(F.all()) > tolerancia and x < 500:
+
+        a=F[0]#-B[0]
+
+        #m_i = 0.6
+        x += 1
+        print('Iteração \n',x,abs(a))
+
+        #ang_k = ang_k2
+    # passo 3: calculate F(alfa_0), B(m_i) and Jacobian J(alfa_0)
+    ###########################################################
+        matriz_F = F_alfa(ang_k,m_i)#.reshape(4,1)
+
+
+        F=matriz_F
+
+        c = Jacobiana(ang_k)
+        print('Jacobiana inversa\n',c)
+
+        inv_J=np.linalg.inv(c)
+
+    # passo 4: compute correction delta_alfa the iteration
+    ###########################################################
+
+        delta_alfa=np.matmul(inv_J,-F)
+        print('Matriz delta_alfa\n',delta_alfa)
+
+
+    # passo 5: update the switching angles
+    ###########################################################
+        ang_k1 = ang_k
+        ang_k2 = ang_k1+delta_alfa
+        ang_k = ang_k2
+
+    # Passo 6: perform alfa_(k+1)=cos(-1)(abs(cos(alfa_k+1)))
+    # transformation to bring switching angles in feasible range
+    ###########################################################
+
+        #ang_k[0] = np.pi*10/180
+        #ang_k[1] = np.pi*20/180
+        #ang_k[2] = np.pi*30/180
+        #ang_k[3] = np.pi*40/180
+
+        ang_k = a_cos(ang_k)
+
+        ang_k_graus = (180/mt.pi)*a_cos(ang_k)
+        print('Matriz F\n',F)
+
+
+
+    print('Matriz de angulos atualizada\n', ang_k_graus)
+
+    print('Modulação:', m_i)
+
+    return
+
+
+
+
+
+#layout = [
+#            [sg.Radio("Método de Newton"),sg.Text("Intervalo"),sg.Input("Digite intervalo")],
+#            [sg.Text("Tolerancia de 0.001"),sg.Canvas(key='-CANVAS-'),sg.Canvas(key='canvas2')],
+#            [sg.Button('ok'),sg.Button("OK"),sg.Canvas(key='canvas3')]
+#        ]
+# Create the window
+#window = sg.Window("Demo", layout,size=(400,600))
+
+
+#sg.theme('LightGrey2')
+#sg.theme('DarkAmber')
+#sg.theme('LightTeal')
+#sg.theme('DarkAmber100')
+#sg.theme('DarkTeal')
+sg.preview_all_look_and_feel_themes()
+
+
+metodos = [
+    [sg.Radio('Newton','metodo', True,key='1')],
+    [sg.Radio('Gradiente','metodo',key='2')],
+    [sg.Radio('Gradiente conjugado','metodo',key='3')]
+]
+
+
+botoes = [
+    #[sg.FileBrowse('Buscar',key='buscar',target='arquivo')],
+    [sg.Button('Ler',key='ler')],
+    [sg.Button('Cancelar',key='cancelar')]
+]
+
+arquivo_frame = [
+    [sg.FileBrowse('Burcar arquivo de dados:',key='burcar2',target='arquivo'),sg.InputText('arquivo.txt',key='arquivo',change_submits=True),sg.Column(botoes)]
+    
+]
+
+
+coordenadas = [
+    [sg.Text('PMU_1'),sg.InputText('',key='x1',size=(5,3)),sg.InputText('',key='y1',size=(5,3))],
+    [sg.Text('PMU_2'),sg.InputText('',key='x2',size=(5,3)),sg.InputText('',key='y2',size=(5,3))],
+    [sg.Text('PMU_3'),sg.InputText('',key='x3',size=(5,3)),sg.InputText('',key='y3',size=(5,3))],
+    [sg.Text('PMU_4'),sg.InputText('',key='x4',size=(5,3)),sg.InputText('',key='y4',size=(5,3))],
+    [sg.Text('PMU_5'),sg.InputText('',key='x5',size=(5,3)),sg.InputText('',key='y5',size=(5,3))],
+    [sg.Text('PMU_6'),sg.InputText('',key='x6',size=(5,3)),sg.InputText('',key='y6',size=(5,3))],
+    [sg.Text('PMU_7'),sg.InputText('',key='x7',size=(5,3)),sg.InputText('',key='y7',size=(5,3))],
+    [sg.Text('PMU_8'),sg.InputText('',key='x8',size=(5,3)),sg.InputText('',key='y8',size=(5,3))],
+    [sg.Text('PMU_9'),sg.InputText('',key='x9',size=(5,3)),sg.InputText('',key='y9',size=(5,3))],
+    [sg.Text('PMU_10'),sg.InputText('',key='x10',size=(5,3)),sg.InputText('',key='y10',size=(5,3))],
+    [sg.Button('Localizar',key='acionar_loc')]
+]
+
+
+layout = [
+    [sg.Frame(layout = [[sg.Column(metodos)]],title='Métodos',relief=sg.RELIEF_SUNKEN),
+    sg.Frame(layout=[[sg.Column(arquivo_frame)]],title='Leitura de dados',relief=sg.RELIEF_SUNKEN)
+    ],
+    [sg.Frame(layout=[[sg.Text('',key='lista',size=(33,33))]],title='Detecção do evento por ordem temporal',relief=sg.RELIEF_SUNKEN),
+    sg.Frame(layout=[[sg.Canvas(key='fig1',size=(33,33))], [sg.Canvas(key='fig1_toolbar',size=(33,33))]],size=(33,33),title='Curvas de frequência',relief=sg.RELIEF_SUNKEN),
+    sg.Frame(layout=[[sg.Column(coordenadas)]],title='Coordenadas das SE',relief=sg.RELIEF_SUNKEN),
+    sg.Frame(layout=[[sg.Canvas(key='fig2',size=(33,33))], [sg.Canvas(key='fig2_toolbar',size=(33,33))]],title='Localização estimada do evento',relief=sg.RELIEF_SUNKEN)]
+     #Alex
+]
+
+
+
+
+
+window = sg.Window(
+    "Detecção, classificação e localização de eventos",
+    layout,
+    location=(0, 0),
+    finalize=True,
+    element_justification="center",
+    font="Serif 10",
+    size=(1600,900)
+).Finalize()
+
+window.Maximize()
+
+
+#event, values = sg.Window('Get filename example', [[sg.Text('Filename')], [sg.Input(), sg.FileBrowse()], [sg.OK(), sg.Cancel()] ]).read(close=True)
+
+
+def delete_fig_agg(fig_agg):
+    fig_agg.get_tk_widget().forget()
+    plt.close('all')
+
+
+
+def draw_figure(canvas, figure, toolbar,loc=(0,0)): #Alex
+    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
+    figure_canvas_agg.draw()
+    toolbar = Toolbar(figure_canvas_agg, toolbar) #Alex
+    toolbar.update() #Alex
+    figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
+    return figure_canvas_agg
+
+
+def desenhar_curvas_freq(dados, num_pmu):
+    my_data = dados
+    plt.grid()
+    #plt.plot(my_data[:,0], my_data[:,1], 'b')
+    #plt.plot(my_data[:,0], my_data[:,2], 'r')
+    #plt.plot(my_data[:,0], my_data[:,3], 'g')
+    fig_curvas = matplotlib.figure.Figure(figsize=(4, 4), dpi=100)
+    fig_loc = matplotlib.figure.Figure(figsize=(4, 4), dpi=100)
+    fig1_toolbar = window['fig1_toolbar'].TKCanvas #Alex
+    fig2_toolbar = window['fig2_toolbar'].TKCanvas #Alex
+    #t = np.arange(0, 3, .01)
+    k=0
+    for k in range(1,num_pmu):
+        #fig_curvas.add_subplot().plot(my_data[:,0][4000:4100],my_data[:,k][4000:4100],lw=2)
+        fig_curvas.add_subplot().plot(my_data[:,0],my_data[:,k])
+
+    draw_figure(window['fig1'].TKCanvas, fig_curvas, fig1_toolbar) #Alex
+    draw_figure(window['fig2'].TKCanvas, fig_loc, fig2_toolbar) #Alex
+    #draw_figure(window['fig1'].TKCanvas, fig_curvas) #Alex
+    #draw_figure(window['fig2'].TKCanvas, fig_loc) #Alex
+
+    return
+
+
+"""
+
+def desenhar_curvas_var_freq(dados, num_pmu):
+    my_data = dados
+    plt.grid()
+    #plt.plot(my_data[:,0], my_data[:,1], 'b')
+    #plt.plot(my_data[:,0], my_data[:,2], 'r')
+    #plt.plot(my_data[:,0], my_data[:,3], 'g')
+    fig_curvas = matplotlib.figure.Figure(figsize=(4, 4), dpi=100)
+    fig_loc = matplotlib.figure.Figure(figsize=(4, 4), dpi=100)
+    fig1_toolbar = window['fig1_toolbar'].TKCanvas #Alex
+    fig2_toolbar = window['fig2_toolbar'].TKCanvas #Alex
+    #t = np.arange(0, 3, .01)
+    k=0
+    for k in range(1,num_pmu):
+        #fig_curvas.add_subplot().plot(my_data[:,0][4000:4100],my_data[:,k][4000:4100],lw=2)
+        fig_curvas.add_subplot().plot(my_data[:,0],my_data[:,k])
+
+    draw_figure(window['fig1'].TKCanvas, fig_curvas, fig1_toolbar) #Alex
+    draw_figure(window['fig2'].TKCanvas, fig_loc, fig2_toolbar) #Alex
+    return
+
+
+
+#def desenhar_curvas_var_freq()
+
+"""
+
+
+first_popup_flag = True
+
+while True:
+    if first_popup_flag:
+        sg.popup('Boas vindas!\n\nEste programa foi feito para o Trabalho da disciplina\n \"COE 763 - Redes Elétricas Inteligentes\"\n\n\
+Instruções:\n\n1) Clique em "Buscar arquivo para iniciar";\n2) Selecione o método a ser utilizado;\n\
+3) Clique em "Ler" para identificar a detecção temporal do evento;\n\
+Saídas do programa:\n\nLista de registro de evento em ordem temporal\nCurvas de frequência de SE\nLocalização estimada de ocorrência do evento', title = 'Boas vindas')
+        first_popup_flag = False
+    
+    event, values = window.read()
+    #values['fig1'] = draw_figure(canvas,figure,toolbar,loc=(0,0))
+# End program if user closes window or
+# press the OK button
+#if event == "OK" or event == sg.WIN_CLOSED or event == 'cancelar':
+
+    if event == sg.WIN_CLOSED or event == 'cancelar':
+        break
+    if event == 'ler':
+        if values['arquivo'] == '' or values['arquivo'] == 'arquivo.txt':
+            sg.popup('Defina nome do arquivo!!')
+        else:
+            a = values['arquivo']
+            dados, num_colunas, num_pmu, sub = leitura_dados(a)
+            #v = instante_registro(matriz,a,sub)
+            #vetor_ordenado = ordena(v)
+            desenhar_curvas_freq(dados, num_pmu)
+            #window['fig1'].update(graficos)
+            matriz, var_freq = curvas_var_freq(dados, num_colunas)
+            v = instante_registro(matriz,dados,sub)
+            vetor_ordenado = ordena(v)
+            window['lista'].update(vetor_ordenado)
+        #if event == 'ler':
+        #    window['fig1'].update(desenhar_curvas_freq(dados,num_pmu))
+    
+    #if event == 'acionar_loc':
+        #if (values['x1'] == '' and values['y1'] != '') or (values['x1'] != '' and values['y1'] == '')
+        #a = values['x1','x2','x3','x4','x5','x6','x7','x8','x9','x10']
+        #b = values['y1','y2','y3','y4','y5','y6','y7','y8','y9','y10']
+        #v = ordena(v)
+        #ag = agrupar(a,b,v)
+        #n = newton(ag)
+        
+            
+            
+            
+            #values['lista'] = vetor_ordenado
+            #if event == 'ler':
+            #    sg.popup('Buscar novo arquivo!!')
+            #    if event == 'OK':
+            #        if values['arquivo'] == '' or values['arquivo'] == 'arquivo.txt':
+            #            sg.popup('Burcar arquivo!!')    
+        
+
+window.close()
+
+
+"""
+
